@@ -1,81 +1,143 @@
 const { expect } = require('chai');
 const ethers = require('ethers');
 const bre = require('@nomiclabs/buidler');
+const { gray, green } = require('chalk');
 
 describe('Test', function() {
   let test;
 
-  before('deploy Test contract', async () => {
-    const Test = await bre.ethers.getContractFactory('Test');
-    test = await Test.deploy();
-  });
-
-  describe('when registering the data to be sent', () => {
+  describe('when simulating the data to be sent', () => {
     let timestamps;
     let amounts;
+    let packedData;
+
+    function ensureEvenHex(hex) {
+      if (hex.length % 2 === 0) {
+        return hex;
+      } else {
+        return `0${hex}`
+      }
+    }
 
     function simulateData() {
       timestamps = [];
       amounts = [];
+      packedData = '0x';
+
+      const abiCoder = new ethers.utils.AbiCoder();
 
       for (let i = 0; i < 52; i++) {
-        timestamps.push(Math.floor(Date.now() / 1000) + i);
-        amounts.push(Math.floor(5000 * Math.random()));
+        const timestamp = Math.floor(Date.now() / 1000) + i;
+        timestamps.push(timestamp);
+
+        const amount = Math.floor(5000 * Math.random());
+        amounts.push(amount);
+
+        let timestampHex = ensureEvenHex(timestamp.toString(16));
+        let amountHex = ensureEvenHex(amount.toString(16));
+
+        packedData += `${timestampHex.length.toString(16)}${timestampHex}`;
+        packedData += `${amountHex.length.toString(16)}${amountHex}`;
       }
+
+      const data = abiCoder.encode(['uint64[]', 'uint256[]'], [timestamps, amounts]);
+      console.log(gray(`> raw data (${data.length} bytes): ${data}`));
+
+      console.log(gray(`> packed data (${packedData.length} bytes): ${packedData}`));
     }
 
-    before('simulate and register data', async () => {
+    function showGasUsed({ ctx, receipt }) {
+      ctx._runnable.title = `${ctx._runnable.title} (${green(receipt.gasUsed)}${gray(' gas)')}`;
+    }
+
+    before('simulate data', async () => {
       simulateData();
-
-      const tx = await test.setData(timestamps, amounts);
-      await tx.wait();
-      const receipt = await bre.ethers.provider.getTransactionReceipt(tx.hash)
-      console.log('setting 52 entries used:', receipt.gasUsed.toNumber(), 'gas')
     });
 
-    it('should have registered timestamps', async () => {
-      const retrievedTimestamps = await test.getTimestamps();
-
-      for (let i = 0; i < timestamps.length; i++) {
-        const timestamp = timestamps[i];
-        const retrievedTimestamp = retrievedTimestamps[i];
-
-        expect(timestamp).to.equal(retrievedTimestamp);
-      }
-    });
-
-    it('should have registered amounts', async () => {
-      const retrievedAmounts = await test.getAmounts();
-
-      for (let i = 0; i < amounts.length; i++) {
-        const amount = amounts[i];
-        const retrievedAmount = retrievedAmounts[i];
-
-        expect(amount).to.equal(retrievedAmount);
-      }
-    });
-
-    describe('when packing the data', () => {
-      let packedData;
-
-      before('pack the data', async () => {
-        const tx = await test.packData();
-        await tx.wait();
+    describe('when storing the data directly', () => {
+      before('deploy Test contract', async () => {
+        const Test = await bre.ethers.getContractFactory('Test');
+        test = await Test.deploy();
       });
 
-      it('packed the data', async () => {
-        packedData = await test.getPackedData();
-        console.log(packedData);
+      // This would normally be a 'before', but using an 'it'
+      // so that we can print gas used in the title
+      it('stores the data', async function() {
+        const tx = await test.setDataRaw(timestamps, amounts);
+        const receipt = await tx.wait();
 
-        const expectedBytes =
-          52 * 32 + // timestamps, 52 * 32 bytes
-          52 * 32   // amounts, 52 * 32 bytes
+        showGasUsed({ ctx: this, receipt });
+      });
 
-        const expectedLength =
-          2 +               // 0x
-          2 * expectedBytes // 1 byte = 2 chars
+      it('should have registered timestamps', async () => {
+        const retrievedTimestamps = await test.getTimestamps();
 
-        expect(packedData.length).to.equal(expectedLength);
+        for (let i = 0; i < timestamps.length; i++) {
+          const timestamp = timestamps[i];
+          const retrievedTimestamp = retrievedTimestamps[i];
+
+          expect(timestamp).to.equal(retrievedTimestamp);
+        }
+      });
+
+      it('should have registered amounts', async () => {
+        const retrievedAmounts = await test.getAmounts();
+
+        for (let i = 0; i < amounts.length; i++) {
+          const amount = amounts[i];
+          const retrievedAmount = retrievedAmounts[i];
+
+          expect(amount).to.equal(retrievedAmount);
+        }
+      });
+    });
+
+    describe('when storing the data packed', () => {
+      before('deploy Test contract', async () => {
+        const Test = await bre.ethers.getContractFactory('Test');
+        test = await Test.deploy();
+      });
+
+      // This would normally be a 'before', but using an 'it'
+      // so that we can print gas used in the title
+      it('stores the data', async function() {
+        const tx = await test.setDataPacked(packedData);
+        const receipt = await tx.wait();
+
+        showGasUsed({ ctx: this, receipt });
+      });
+
+      describe('when unpacking the data', () => {
+        // This would normally be a 'before', but using an 'it'
+        // so that we can print gas used in the title
+        it('unpack the data', async function() {
+          const tx = await test.unpackData();
+          const receipt = await tx.wait();
+
+          showGasUsed({ ctx: this, receipt });
+        });
+
+        it('should have registered timestamps', async () => {
+          const retrievedTimestamps = await test.getTimestamps();
+
+          for (let i = 0; i < timestamps.length; i++) {
+            const timestamp = timestamps[i];
+            const retrievedTimestamp = retrievedTimestamps[i];
+
+            expect(timestamp).to.equal(retrievedTimestamp);
+          }
+        });
+
+        it('should have registered amounts', async () => {
+          const retrievedAmounts = await test.getAmounts();
+
+          for (let i = 0; i < amounts.length; i++) {
+            const amount = amounts[i];
+            const retrievedAmount = retrievedAmounts[i];
+
+            expect(amount).to.equal(retrievedAmount);
+          }
+        });
       });
     });
   });

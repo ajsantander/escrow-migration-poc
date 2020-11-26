@@ -7,9 +7,21 @@ contract Test {
 
     bytes _packedData;
 
-    function setData(uint64[52] memory timestamps, uint256[52] memory amounts) public {
+    function setDataRaw(uint64[52] calldata timestamps, uint256[52] calldata amounts) external {
         _timestamps = timestamps;
         _amounts = amounts;
+    }
+
+    function setDataPacked(bytes calldata data) external {
+        _packedData = data;
+    }
+
+    function unpackData() public {
+        assembly {
+            // Load free memory pointer
+            let ptr = mload(0x40);
+
+        }
     }
 
     function getTimestamps() public view returns (uint64[52] memory) {
@@ -18,16 +30,5 @@ contract Test {
 
     function getAmounts() public view returns (uint256[52] memory) {
         return _amounts;
-    }
-
-    function packData() public {
-        _packedData = abi.encode(
-            _timestamps,
-            _amounts
-        );
-    }
-
-    function getPackedData() public view returns (bytes memory) {
-        return _packedData;
     }
 }
