@@ -17,9 +17,10 @@ contract Test {
     }
 
     function unpackData() public {
+        // TODO
         assembly {
             // Load free memory pointer
-            let ptr = mload(0x40);
+            // let ptr = mload(0x40);
 
         }
     }

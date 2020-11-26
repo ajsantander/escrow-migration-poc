@@ -19,6 +19,10 @@ describe('Test', function() {
       }
     }
 
+    function lenToBytes(len) {
+      return ensureEvenHex((len / 2).toString(16));
+    }
+
     function simulateData() {
       timestamps = [];
       amounts = [];
@@ -33,11 +37,17 @@ describe('Test', function() {
         const amount = Math.floor(5000 * Math.random());
         amounts.push(amount);
 
-        let timestampHex = ensureEvenHex(timestamp.toString(16));
-        let amountHex = ensureEvenHex(amount.toString(16));
+        const timestampHex = ensureEvenHex(timestamp.toString(16));
+        const amountHex = ensureEvenHex(amount.toString(16));
 
-        packedData += `${timestampHex.length.toString(16)}${timestampHex}`;
-        packedData += `${amountHex.length.toString(16)}${amountHex}`;
+        const timestampHexLen = lenToBytes(timestampHex.length);
+        const amountHexLen = lenToBytes(amountHex.length);
+
+        const timestampPacked =  `${timestampHexLen}${timestampHex}`;
+        const amountPacked = `${amountHexLen}${amountHex}`;
+
+        packedData += timestampPacked;
+        packedData += amountPacked;
       }
 
       const data = abiCoder.encode(['uint64[]', 'uint256[]'], [timestamps, amounts]);
