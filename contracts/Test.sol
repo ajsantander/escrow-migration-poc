@@ -6,6 +6,7 @@ contract Test {
     uint256[52] _amounts;
 
     bytes _packedData;
+    bytes _superPackedData;
 
     function setDataRaw(uint64[52] calldata timestamps, uint256[52] calldata amounts) external {
         _timestamps = timestamps;
@@ -20,16 +21,32 @@ contract Test {
         return _amounts;
     }
 
-    function setDataPacked(bytes calldata data) external {
-        _packedData = data;
-    }
+    // -----------------------------
+    // Simple packing
+    // -----------------------------
 
-    function getPackedData() external view returns (bytes memory) {
-        return _packedData;
+    function setPackedData(bytes calldata packedData) external {
+        _packedData = packedData;
     }
 
     function unpackData() public {
-        bytes memory packed = _packedData;
+        (_timestamps, _amounts) = abi.decode(_packedData, (uint64[52], uint256[52]));
+    }
+
+    // -----------------------------
+    // Super packing
+    // -----------------------------
+
+    function setSuperPackedData(bytes calldata data) external {
+        _superPackedData = data;
+    }
+
+    function getSuperPackedData() external view returns (bytes memory) {
+        return _superPackedData;
+    }
+
+    function superUnpackData() public {
+        bytes memory packed = _superPackedData;
 
         uint len;
         uint offset;
