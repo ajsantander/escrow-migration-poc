@@ -31,10 +31,13 @@ describe('Test', function() {
       const abiCoder = new ethers.utils.AbiCoder();
 
       for (let i = 0; i < 52; i++) {
+        console.log(`Generating entry ${i}...`);
         const timestamp = Math.floor(Date.now() / 1000) + i;
+        console.log(`  > Timestamp: ${timestamp}`);
         timestamps.push(timestamp);
 
         const amount = Math.floor(5000 * Math.random());
+        console.log(`  > Amount: ${amount}`);
         amounts.push(amount);
 
         const timestampHex = ensureEvenHex(timestamp.toString(16));
@@ -44,7 +47,9 @@ describe('Test', function() {
         const amountHexLen = lenToBytes(amountHex.length);
 
         const timestampPacked =  `${timestampHexLen}${timestampHex}`;
+        console.log(`  > Timestamp packed: ${timestampPacked}`);
         const amountPacked = `${amountHexLen}${amountHex}`;
+        console.log(`  > Amount packed: ${amountPacked}`);
 
         packedData += timestampPacked;
         packedData += amountPacked;
